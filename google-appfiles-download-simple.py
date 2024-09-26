@@ -67,11 +67,13 @@ def main():
 
 
     
-    failed = [] 
+    failed = []
+    permission_failed = []
     count = 0
     for file_path in Path(google_folder_path).glob('*.desktop'):
         print(file_path)
         file_keys = symbolic_link_to_document_info( str(file_path) )
+        error_str = ''
 
         try:
 
@@ -79,23 +81,44 @@ def main():
                 continue
 
             gdown.download(id=file_keys['Id'], output=file_keys['Name'])
+            count += 1
             
    
-        except (HttpError,  as error:
+        except HttpError as error:
             # TODO: keep track of which files have failed on oversize
-            print(f'An error occurred: {error}')
-            details = re.search(r'Details: (.*)$', str(error) )
-            failed.append( (str(file_path), file_keys['URL'], details.group(1) if details else 'Unknown reason') )
-            continue
+            error_str = re.search(r'Details: (.*)$', str(error) ) 
+            failed.append((str(file_path), file_keys['URL'], error_str ))
+        except Exception as error:
+            altURL = ''
+            if re.search(r'Cannot retrieve .*public link', str(error)):
+                s = re.search(r'https://drive.google.com[^ ]+', str(error))
+                altURL = s.group(0) if s else ''
+                if altURL:
+                    gdown.download(url=altURL, output=file_keys['Name'])
+                    count += 1
+                else:
+                    permission_failed.append( (str(file_path), 
+                                               file_keys['URL'], 
+                                               'Cannot retrieve the public link of the file.'))
+            else:
+                failed.append((str(file_path), file_keys['URL'], error_str ))
+            
 
-    print(f'{count} files successfully downloaded; {len(failed)} failures.')
+    print(f'{count} files successfully downloaded; {len(failed) + len(permission_failed)} failures.')
     if failed:
         print('Failures:')
         for fl in failed:
             print('\n'.join([ f'File path: {fl[0]}', f'URL: {fl[1]}', 
-                             f'Reason: {fl[2]}' ]), '\n') 
+                             f'Mesg: {fl[2]}' ]), '\n') 
 
+    if permission_failed:
+        print('\nThe following files failed with the Gdown message below:'
+              '"Cannot retrieve the public link of the file. You may need to change'
+              ' the permission to \'Anyone with the link\', or have had many accesses.'
+              ' Check FAQ in https://github.com/wkentaro/gdown?tab=readme-ov-file#faq."')
 
+        for fl in permission_failed:
+            print('\n\n'.join([ f'File path: {fl[0]}', f'URL: {fl[1]}', f'Mesg: {fl[2]}']))
 
 if __name__ == '__main__':
     main()
