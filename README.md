@@ -15,6 +15,8 @@ Retrieve Google appfiles from a locally mounted Google-drive, while storing them
 Usage: ./google-appfiles-download-simple.py [-h] [-n] google_pathname [google_pathname ...]
 ```
 
+### API-based version
+
 ```bash
 usage: ./google-appfiles-download.py [-h] [-n] google_pathname [google_pathname ...]
 ```
