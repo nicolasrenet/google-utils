@@ -5,19 +5,10 @@ from __future__ import print_function
 import os.path
 import sys
 
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
-from googleapiclient.http import MediaIoBaseDownload
 from pathlib import Path
+from argparse import ArgumentParser
 import gdown
 import re
-
-
-USAGE_STR = f"{sys.argv[0]} <locally mounted google drive folder path>"
-
 
 
 def symbolic_link_to_document_info( sl: str ):
@@ -53,72 +44,65 @@ def symbolic_link_to_document_info( sl: str ):
 
 def main():
 
+    parser = ArgumentParser(prog=f'{sys.argv[0]}', description='Download Google appfiles from Drive.')
+    parser.add_argument('-n', '--dry-run', help='List the files that would be downloaded instead.', action='store_true')
+    parser.add_argument('google_pathname', nargs='+', help='A "*.desktop" file or folder path.', type=str)
 
-    if len(sys.argv) < 2 or sys.argv[1]=='-h' or sys.argv[1]=='--help':
-        print("USAGE: ", USAGE_STR)
-        sys.exit()
+    args = parser.parse_args()
 
-    if not Path(sys.argv[1]).exists():
-        print("Check that the provided path exists.")
-        print("USAGE: ", USAGE_STR)
-        sys.exit()
-        
-    google_folder_path = sys.argv[1] 
-
-
-    
+    present = 0
     failed = []
-    permission_failed = []
     count = 0
-    for file_path in Path(google_folder_path).glob('*.desktop'):
-        print(file_path)
-        file_keys = symbolic_link_to_document_info( str(file_path) )
-        error_str = ''
+    
+    for file_pathname in args.google_pathname:
+        
+        file_path = Path( file_pathname )
+        if not file_path.exists():
+            print("Check that the provided path {file_pathname} exists.")
+            print("USAGE: ", USAGE_STR)
+            sys.exit()
 
-        try:
+        if file_path.is_dir():
 
-            if file_keys is None:
-                continue
+            for sl_file_path in file_path.glob('*.desktop'):
+                present += 1
+                count += retrieve_content( sl_file_path, failed, dry_run=args.dry_run )
+        elif file_path.suffix == '.desktop':
+            present += 1
+            count += retrieve_content( file_path, failed, dry_run=args.dry_run )
 
-            gdown.download(id=file_keys['Id'], output=file_keys['Name'])
-            count += 1
-            
-   
-        except HttpError as error:
-            # TODO: keep track of which files have failed on oversize
-            error_str = re.search(r'Details: (.*)$', str(error) ) 
-            failed.append((str(file_path), file_keys['URL'], error_str ))
-        except Exception as error:
-            altURL = ''
-            if re.search(r'Cannot retrieve .*public link', str(error)):
-                s = re.search(r'https://drive.google.com[^ ]+', str(error))
+    if args.dry_run:
+        print('(DRY RUN: no file downloaded)')
+    print(f'{present} files processed; {count} files successfully downloaded; {len(failed)} failures.')
+
+    for fl in failed:
+        print('\n'+'\n'.join([ f'File path: {fl[0]}', f'URL: {fl[1]}', f'Mesg: {fl[2]}']))
+
+def retrieve_content( fp: Path, failed: list, dry_run: bool=False):
+
+            print(fp)
+
+            file_keys = symbolic_link_to_document_info( str(fp) )
+            error_str = ''
+
+            try:
+
+                if file_keys is None or dry_run:
+                    return 0
+
+                gdown.download(id=file_keys['Id'], output=file_keys['Name'])
+
+                return 1
+                
+            except Exception as error:
+                altURL = ''
+                s = re.search(r'https://drive.google.com\S+', str(error))
                 altURL = s.group(0) if s else ''
-                if altURL:
-                    gdown.download(url=altURL, output=file_keys['Name'])
-                    count += 1
-                else:
-                    permission_failed.append( (str(file_path), 
-                                               file_keys['URL'], 
-                                               'Cannot retrieve the public link of the file.'))
-            else:
-                failed.append((str(file_path), file_keys['URL'], error_str ))
-            
+                failed.append( (str(fp), 
+                                file_keys['URL'], 
+                                'Cannot retrieve the public link of the file.' + ( f' Try download manually from {altURL}.' if altURL else '')))
+                return 0
 
-    print(f'{count} files successfully downloaded; {len(failed) + len(permission_failed)} failures.')
-    if failed:
-        print('Failures:')
-        for fl in failed:
-            print('\n'.join([ f'File path: {fl[0]}', f'URL: {fl[1]}', 
-                             f'Mesg: {fl[2]}' ]), '\n') 
-
-    if permission_failed:
-        print('\nThe following files failed with the Gdown message below:'
-              '"Cannot retrieve the public link of the file. You may need to change'
-              ' the permission to \'Anyone with the link\', or have had many accesses.'
-              ' Check FAQ in https://github.com/wkentaro/gdown?tab=readme-ov-file#faq."')
-
-        for fl in permission_failed:
-            print('\n\n'.join([ f'File path: {fl[0]}', f'URL: {fl[1]}', f'Mesg: {fl[2]}']))
 
 if __name__ == '__main__':
     main()
