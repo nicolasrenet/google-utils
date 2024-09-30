@@ -1,0 +1,29 @@
+[project]
+name = "google-appfile-download"
+version = "1.0"
+authors = [
+  { name="Nicolas Renet", email="nprenet@gmail.com" },
+]
+description = "Download appfiles from locally mounted Google-drive"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [ "gdown", "google-api-core", "google-api-python-client", "google-auth", "google-auth-httplib2", "google-auth-oauthlib"]
+
+[project.urls]
+Homepage = "https://github.com/nicolasrenet/google-utils"
+
+[project.scripts]
+g-appfifle-download = "tools:google-appfiles-download.py"
+g-appfifle-download-simple = "tools:google-appfiles-download.py"
+
+
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
