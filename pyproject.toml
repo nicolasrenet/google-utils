@@ -1,5 +1,5 @@
 [project]
-name = "google-appfile-download"
+name = "google-utils"
 version = "1.0"
 authors = [
   { name="Nicolas Renet", email="nprenet@gmail.com" },
@@ -13,14 +13,14 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
-dependencies = [ "gdown", "google-api-core", "google-api-python-client", "google-auth", "google-auth-httplib2", "google-auth-oauthlib"]
+#dependencies = [ "gdown", "google-api-core", "google-api-python-client", "google-auth", "google-auth-httplib2", "google-auth-oauthlib"]
 
 [project.urls]
 Homepage = "https://github.com/nicolasrenet/google-utils"
 
 [project.scripts]
-g-appfifle-download = "tools:google-appfiles-download.py"
-g-appfifle-download-simple = "tools:google-appfiles-download.py"
+g_appfile_download = "google_utils.google_appfiles_download:main"
+g_appfile_download_simple = "google_utils.google_appfiles_download_simple:main"
 
 
 
